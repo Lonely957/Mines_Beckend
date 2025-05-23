@@ -26,6 +26,18 @@ router.post("/usuarios", async (req, res) => {
   }
 });
 
+// Rota para buscar todos os usuários
+router.get("/usuarios", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT id, username, email FROM usuarios");
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Erro ao buscar usuários:", err);
+    res.status(500).json({ error: "Erro ao buscar usuários" });
+  }
+});
+
+
 // Rota para solicitar recuperação de senha
 router.post("/recuperar-senha", async (req, res) => {
   const { email } = req.body;
