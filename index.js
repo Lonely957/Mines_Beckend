@@ -126,7 +126,8 @@ app.put('/usuario/atualizar/:id', async (req, res) => {
     usuario.username = username.trim();
     usuario.email = email.trim();
     usuario.senha = senha.trim();
-    usuario.tipousuario = tipousuario.trim();
+    usuario.tipousuario = tipousuario; 
+
 
     await usuario.save();
 
@@ -352,6 +353,39 @@ app.get('/usuario/:id/estatisticas', async (req, res) => {
     res.status(500).json({ error: 'Erro ao obter estatísticas do usuário.' });
   }
 });
+
+// Rota para obter o histórico de partidas de um usuário
+app.get('/usuario/:id/historico', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Verifica se o usuário existe
+    const usuario = await Usuario.findByPk(id);
+    if (!usuario) {
+      return res.status(404).json({ error: 'Usuário não encontrado.' });
+    }
+
+    // Busca todas as partidas do usuário, ordenadas da mais recente para a mais antiga
+    const historico = await Partida.findAll({
+      where: { usuario_id: id },
+      order: [['createdAt', 'DESC']]  // ← importante: exibe do mais recente ao mais antigo
+    });
+
+    res.json({
+      usuario: {
+        id: usuario.id,
+        username: usuario.username,
+        email: usuario.email
+      },
+      historico
+    });
+
+  } catch (error) {
+    console.error('Erro ao obter histórico de partidas:', error);
+    res.status(500).json({ error: 'Erro ao obter histórico de partidas.' });
+  }
+});
+
 
 
 
