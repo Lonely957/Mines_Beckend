@@ -16,23 +16,32 @@ app.use(express.json());
 app.post('/usuario/login', async (req, res) => {
   console.log('Requisição recebida:', req.body);
 
-  const { email, senha } = req.body;
+  const { login, senha } = req.body;
 
-  if (!email || !senha) {
-    return res.status(400).json({ error: 'Email e senha são obrigatórios.' });
+  if (!login || !senha) {
+    return res.status(400).json({ error: 'Login (email ou username) e senha são obrigatórios.' });
   }
 
   try {
-    const usuario = await Usuario.findOne({ where: { email } });
+    // Tenta encontrar o usuário por email
+    let usuario = await Usuario.findOne({ where: { email: login } });
 
+    // Se não encontrou por email, tenta por username
+    if (!usuario) {
+      usuario = await Usuario.findOne({ where: { username: login } });
+    }
+
+    // Se ainda não encontrou, retorna erro
     if (!usuario) {
       return res.status(404).json({ error: 'Usuário não encontrado.' });
     }
 
+    // Verifica a senha 
     if (usuario.senha !== senha) {
       return res.status(401).json({ error: 'Senha incorreta.' });
     }
 
+    // Login bem-sucedido
     res.json({
       message: 'Login realizado com sucesso!',
       usuario: {
@@ -42,11 +51,13 @@ app.post('/usuario/login', async (req, res) => {
         tipousuario: usuario.tipousuario,
       },
     });
+
   } catch (error) {
     console.error('Erro ao fazer login:', error);
     res.status(500).json({ error: 'Erro ao tentar realizar o login.' });
   }
 });
+
 // Rota para obter todos os usuários
 app.get('/usuario', async (req, res) => {
   try {
@@ -77,22 +88,44 @@ app.post('/usuario/inserir', async (req, res) => {
     console.log('Requisição recebida em /usuario/inserir');
     console.log('Dados recebidos:', req.body);
 
-    // Validação básica de campos obrigatórios
-    if (!username || !senha) {
-      console.warn('Campos obrigatórios faltando:', { username, senha });
-      return res.status(400).json({ error: 'Username e senha são obrigatórios.' });
+    // ---------- Validações ----------
+    if (!username || !senha || !email) {
+      return res.status(400).json({ error: 'Username, senha e email são obrigatórios.' });
     }
 
-    // Confirmar o conteúdo individual
-    console.log('Username:', username);
-    console.log('Senha:', senha);
-    console.log('Email:', email);
-    console.log('Tipo de Usuário:', tipousuario);
+    // Verifica formato do email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: 'Email inválido.' });
+    }
 
+    // Verifica força da senha (mínimo 8 caracteres, maiúscula, minúscula, número, símbolo)
+    const senhaForteRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
+    if (!senhaForteRegex.test(senha)) {
+      return res.status(400).json({ 
+        error: 'A senha deve ter no mínimo 8 caracteres, incluindo letra maiúscula, minúscula, número e símbolo.'
+      });
+    }
+
+    // Verifica se email ou username já existem
+    const usuarioExistente = await Usuario.findOne({
+      where: {
+        [Op.or]: [
+          { email: email.trim() },
+          { username: username.trim() }
+        ]
+      }
+    });
+
+    if (usuarioExistente) {
+      return res.status(400).json({ error: 'Username ou email já cadastrados.' });
+    }
+
+    // ---------- Criação do usuário ----------
     const novoUsuario = await Usuario.create({
       username: username.trim(),
       senha: senha.trim(),
-      email: email ? email.trim() : null,
+      email: email.trim(),
       tipousuario: tipousuario ? tipousuario.trim() : null,
     });
 
@@ -100,10 +133,11 @@ app.post('/usuario/inserir', async (req, res) => {
 
     res.status(201).json(novoUsuario);
   } catch (error) {
-    console.error('Erro ao inserir usuário:', error); // Log completo do erro
+    console.error('Erro ao inserir usuário:', error);
     res.status(500).json({ error: 'Erro ao inserir usuário.', detalhes: error.message });
   }
 });
+
 
 // Rota para atualizar usuário
 app.put('/usuario/atualizar/:id', async (req, res) => {

@@ -35,9 +35,12 @@ const Usuario = sequelize.define('Usuario', {
     allowNull: true,
   },
   tipousuario: {
-    type: DataTypes.STRING(50),
-    allowNull: true,
-  }
+  type: DataTypes.STRING,
+  allowNull: false,
+  validate: {
+    isIn: [['admin', 'cliente']], // valida apenas esses dois valores
+  },
+}
 }, {
   tableName: 'usuarios',
   schema: 'public',
