@@ -34,13 +34,11 @@ const Usuario = sequelize.define('Usuario', {
     type: DataTypes.DATE,
     allowNull: true,
   },
-  tipousuario: {
-  type: DataTypes.STRING,
+tipousuario: {
+  type: DataTypes.ENUM('admin', 'cliente'),
   allowNull: false,
-  validate: {
-    isIn: [['admin', 'cliente']], // valida apenas esses dois valores
-  },
 }
+
 }, {
   tableName: 'usuarios',
   schema: 'public',
@@ -98,5 +96,10 @@ sequelize.authenticate()
   .catch(error => {
     console.error('Erro ao conectar ao banco de dados:', error);
   });
+
+  sequelize.sync({ force: true }).then(() => {
+  console.log('Tabelas sincronizadas e recriadas.');
+});
+
 
 module.exports = { Usuario, Partida, sequelize };
